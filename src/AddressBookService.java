@@ -33,7 +33,8 @@ public class AddressBookService {
                 System.out.println("2. View Contacts");
                 System.out.println("3. Edit Contact");
                 System.out.println("4. Delete Contact");
-                System.out.println("5. Exit");
+                System.out.println("5. Retrieve Contacts by City or State");
+                System.out.println("6. Exit");
                 System.out.print("Choose an option: ");
 
                 int choice = scanner.nextInt();
@@ -117,6 +118,26 @@ public class AddressBookService {
                         }
                     }
                     case 5 -> {
+                        System.out.print("Enter City or State to Retrieve Contacts: ");
+                        String location = scanner.nextLine();
+
+                        String retrieveSQL = String.format("SELECT * FROM contacts WHERE city = '%s' OR state = '%s';", location, location);
+                        ResultSet resultSet = statement.executeQuery(retrieveSQL);
+                        System.out.println("\nContacts:");
+                        while (resultSet.next()) {
+                            System.out.printf("ID: %d, First Name: %s, Last Name: %s, Address: %s, City: %s, State: %s, Zip: %s, Phone: %s, Email: %s%n",
+                                    resultSet.getInt("id"),
+                                    resultSet.getString("first_name"),
+                                    resultSet.getString("last_name"),
+                                    resultSet.getString("address"),
+                                    resultSet.getString("city"),
+                                    resultSet.getString("state"),
+                                    resultSet.getString("zip"),
+                                    resultSet.getString("phone_number"),
+                                    resultSet.getString("email"));
+                        }
+                    }
+                    case 6 -> {
                         System.out.println("Exiting... Goodbye!");
                         return;
                     }
