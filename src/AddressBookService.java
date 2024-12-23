@@ -14,18 +14,24 @@ public class AddressBookService {
 
             System.out.println("Connected to the database successfully!");
 
-            // Create table if it doesn't exist
+            // Create Address Book table
             String createTableSQL = "CREATE TABLE IF NOT EXISTS contacts ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY,"
-                    + "name VARCHAR(100) NOT NULL,"
-                    + "email VARCHAR(100),"
-                    + "phone VARCHAR(15));";
+                    + "first_name VARCHAR(50) NOT NULL,"
+                    + "last_name VARCHAR(50) NOT NULL,"
+                    + "address VARCHAR(100),"
+                    + "city VARCHAR(50),"
+                    + "state VARCHAR(50),"
+                    + "zip VARCHAR(10),"
+                    + "phone_number VARCHAR(15),"
+                    + "email VARCHAR(100));";
             statement.execute(createTableSQL);
 
             while (true) {
                 System.out.println("\nMenu:");
-                System.out.println("1. View Contacts");
-                System.out.println("2. Exit");
+                System.out.println("1. Add Contact");
+                System.out.println("2. View Contacts");
+                System.out.println("3. Exit");
                 System.out.print("Choose an option: ");
 
                 int choice = scanner.nextInt();
@@ -33,18 +39,45 @@ public class AddressBookService {
 
                 switch (choice) {
                     case 1 -> {
+                        System.out.print("Enter First Name: ");
+                        String firstName = scanner.nextLine();
+                        System.out.print("Enter Last Name: ");
+                        String lastName = scanner.nextLine();
+                        System.out.print("Enter Address: ");
+                        String address = scanner.nextLine();
+                        System.out.print("Enter City: ");
+                        String city = scanner.nextLine();
+                        System.out.print("Enter State: ");
+                        String state = scanner.nextLine();
+                        System.out.print("Enter Zip: ");
+                        String zip = scanner.nextLine();
+                        System.out.print("Enter Phone Number: ");
+                        String phoneNumber = scanner.nextLine();
+                        System.out.print("Enter Email: ");
+                        String email = scanner.nextLine();
+
+                        String insertSQL = String.format("INSERT INTO contacts (first_name, last_name, address, city, state, zip, phone_number, email) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');", firstName, lastName, address, city, state, zip, phoneNumber, email);
+                        statement.executeUpdate(insertSQL);
+                        System.out.println("Contact added successfully!");
+                    }
+                    case 2 -> {
                         String selectSQL = "SELECT * FROM contacts;";
                         ResultSet resultSet = statement.executeQuery(selectSQL);
                         System.out.println("\nContacts:");
                         while (resultSet.next()) {
-                            System.out.printf("ID: %d, Name: %s, Email: %s, Phone: %s%n",
+                            System.out.printf("ID: %d, First Name: %s, Last Name: %s, Address: %s, City: %s, State: %s, Zip: %s, Phone: %s, Email: %s%n",
                                     resultSet.getInt("id"),
-                                    resultSet.getString("name"),
-                                    resultSet.getString("email"),
-                                    resultSet.getString("phone"));
+                                    resultSet.getString("first_name"),
+                                    resultSet.getString("last_name"),
+                                    resultSet.getString("address"),
+                                    resultSet.getString("city"),
+                                    resultSet.getString("state"),
+                                    resultSet.getString("zip"),
+                                    resultSet.getString("phone_number"),
+                                    resultSet.getString("email"));
                         }
                     }
-                    case 2 -> {
+                    case 3 -> {
                         System.out.println("Exiting... Goodbye!");
                         return;
                     }
