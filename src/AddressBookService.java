@@ -14,30 +14,12 @@ public class AddressBookService {
 
             System.out.println("Connected to the database successfully!");
 
-            // Create Address Book table
-            String createTableSQL = "CREATE TABLE IF NOT EXISTS contacts ("
-                    + "id INT AUTO_INCREMENT PRIMARY KEY,"
-                    + "first_name VARCHAR(50) NOT NULL,"
-                    + "last_name VARCHAR(50) NOT NULL,"
-                    + "address VARCHAR(100),"
-                    + "city VARCHAR(50),"
-                    + "state VARCHAR(50),"
-                    + "zip VARCHAR(10),"
-                    + "phone_number VARCHAR(15),"
-                    + "email VARCHAR(100));";
-            statement.execute(createTableSQL);
+            // Create Address Book table if not exists
+            createTable(statement);
 
+            // Menu loop
             while (true) {
-                System.out.println("\nMenu:");
-                System.out.println("1. Add Contact");
-                System.out.println("2. View Contacts");
-                System.out.println("3. Edit Contact");
-                System.out.println("4. Delete Contact");
-                System.out.println("5. Retrieve Contacts by City or State");
-                System.out.println("6. Get Contact Count by City or State");
-                System.out.println("7. Exit");
-                System.out.print("Choose an option: ");
-
+                displayMenu();
                 int choice = scanner.nextInt();
                 scanner.nextLine(); // Consume newline
 
@@ -48,7 +30,8 @@ public class AddressBookService {
                     case 4 -> deleteContact(statement, scanner);
                     case 5 -> retrieveContactsByLocation(statement, scanner);
                     case 6 -> getContactCountByLocation(statement, scanner);
-                    case 7 -> {
+                    case 7 -> retrieveSortedContactsByCity(statement, scanner); // New option for sorted contacts
+                    case 8 -> {
                         System.out.println("Exiting... Goodbye!");
                         return;
                     }
@@ -60,6 +43,43 @@ public class AddressBookService {
         }
     }
 
+    // Create table if it doesn't exist
+    private static void createTable(Statement statement) {
+        String createTableSQL = """
+                CREATE TABLE IF NOT EXISTS contacts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    first_name VARCHAR(50) NOT NULL,
+                    last_name VARCHAR(50) NOT NULL,
+                    address VARCHAR(100),
+                    city VARCHAR(50),
+                    state VARCHAR(50),
+                    zip VARCHAR(10),
+                    phone_number VARCHAR(15),
+                    email VARCHAR(100)
+                );
+                """;
+        try {
+            statement.execute(createTableSQL);
+        } catch (SQLException e) {
+            System.err.println("Error creating table: " + e.getMessage());
+        }
+    }
+
+    // Display menu options
+    private static void displayMenu() {
+        System.out.println("\nMenu:");
+        System.out.println("1. Add Contact");
+        System.out.println("2. View Contacts");
+        System.out.println("3. Edit Contact");
+        System.out.println("4. Delete Contact");
+        System.out.println("5. Retrieve Contacts by City or State");
+        System.out.println("6. Get Contact Count by City or State");
+        System.out.println("7. Retrieve Sorted Contacts by City");
+        System.out.println("8. Exit");
+        System.out.print("Choose an option: ");
+    }
+
+    // Add a new contact
     private static void addContact(Statement statement, Scanner scanner) {
         System.out.print("Enter First Name: ");
         String firstName = scanner.nextLine();
@@ -78,8 +98,11 @@ public class AddressBookService {
         System.out.print("Enter Email: ");
         String email = scanner.nextLine();
 
-        String insertSQL = String.format("INSERT INTO contacts (first_name, last_name, address, city, state, zip, phone_number, email) "
-                + "VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');", firstName, lastName, address, city, state, zip, phoneNumber, email);
+        String insertSQL = String.format("""
+                INSERT INTO contacts (first_name, last_name, address, city, state, zip, phone_number, email)
+                VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');
+                """, firstName, lastName, address, city, state, zip, phoneNumber, email);
+
         try {
             statement.executeUpdate(insertSQL);
             System.out.println("Contact added successfully!");
@@ -88,6 +111,7 @@ public class AddressBookService {
         }
     }
 
+    // View all contacts
     private static void viewContacts(Statement statement) {
         String selectSQL = "SELECT * FROM contacts;";
         try (ResultSet resultSet = statement.executeQuery(selectSQL)) {
@@ -109,6 +133,7 @@ public class AddressBookService {
         }
     }
 
+    // Edit a contact
     private static void editContact(Statement statement, Scanner scanner) {
         System.out.print("Enter First Name of the Contact to Edit: ");
         String firstName = scanner.nextLine();
@@ -126,8 +151,11 @@ public class AddressBookService {
         System.out.print("Enter New Email: ");
         String email = scanner.nextLine();
 
-        String updateSQL = String.format("UPDATE contacts SET address = '%s', city = '%s', state = '%s', zip = '%s', phone_number = '%s', email = '%s' WHERE first_name = '%s';",
-                address, city, state, zip, phoneNumber, email, firstName);
+        String updateSQL = String.format("""
+                UPDATE contacts SET address = '%s', city = '%s', state = '%s', zip = '%s', phone_number = '%s', email = '%s'
+                WHERE first_name = '%s';
+                """, address, city, state, zip, phoneNumber, email, firstName);
+
         try {
             int rowsAffected = statement.executeUpdate(updateSQL);
             if (rowsAffected > 0) {
@@ -140,6 +168,7 @@ public class AddressBookService {
         }
     }
 
+    // Delete a contact
     private static void deleteContact(Statement statement, Scanner scanner) {
         System.out.print("Enter First Name of the Contact to Delete: ");
         String firstName = scanner.nextLine();
@@ -157,11 +186,14 @@ public class AddressBookService {
         }
     }
 
+    // Retrieve contacts by City or State
     private static void retrieveContactsByLocation(Statement statement, Scanner scanner) {
         System.out.print("Enter City or State to Retrieve Contacts: ");
         String location = scanner.nextLine();
 
-        String retrieveSQL = String.format("SELECT * FROM contacts WHERE city = '%s' OR state = '%s';", location, location);
+        String retrieveSQL = String.format("""
+                SELECT * FROM contacts WHERE city = '%s' OR state = '%s';
+                """, location, location);
         try (ResultSet resultSet = statement.executeQuery(retrieveSQL)) {
             System.out.println("\nContacts:");
             while (resultSet.next()) {
@@ -181,11 +213,14 @@ public class AddressBookService {
         }
     }
 
+    // Get contact count by City or State
     private static void getContactCountByLocation(Statement statement, Scanner scanner) {
         System.out.print("Enter City or State to Get Contact Count: ");
         String location = scanner.nextLine();
 
-        String countSQL = String.format("SELECT COUNT(*) FROM contacts WHERE city = '%s' OR state = '%s';", location, location);
+        String countSQL = String.format("""
+                SELECT COUNT(*) FROM contacts WHERE city = '%s' OR state = '%s';
+                """, location, location);
         try (ResultSet resultSet = statement.executeQuery(countSQL)) {
             if (resultSet.next()) {
                 int count = resultSet.getInt(1);
@@ -193,6 +228,32 @@ public class AddressBookService {
             }
         } catch (SQLException e) {
             System.err.println("Error getting contact count: " + e.getMessage());
+        }
+    }
+
+    // Retrieve contacts sorted alphabetically by name in a given city
+    private static void retrieveSortedContactsByCity(Statement statement, Scanner scanner) {
+        System.out.print("Enter City to Retrieve Sorted Contacts: ");
+        String city = scanner.nextLine();
+
+        String retrieveSQL = String.format("""
+                SELECT * FROM contacts WHERE city = '%s' ORDER BY first_name, last_name;
+                """, city);
+        try (ResultSet resultSet = statement.executeQuery(retrieveSQL)) {
+            System.out.println("\nContacts in " + city + " sorted alphabetically:");
+            while (resultSet.next()) {
+                System.out.printf("ID: %d, First Name: %s, Last Name: %s, Address: %s, State: %s, Zip: %s, Phone: %s, Email: %s%n",
+                        resultSet.getInt("id"),
+                        resultSet.getString("first_name"),
+                        resultSet.getString("last_name"),
+                        resultSet.getString("address"),
+                        resultSet.getString("state"),
+                        resultSet.getString("zip"),
+                        resultSet.getString("phone_number"),
+                        resultSet.getString("email"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving sorted contacts: " + e.getMessage());
         }
     }
 }
