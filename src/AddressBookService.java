@@ -29,7 +29,7 @@ public class AddressBookService {
 
             while (true) {
                 System.out.println("\nMenu:");
-                System.out.println("1. Add Contact");
+                System.out.println("1. Insert Contact");
                 System.out.println("2. View Contacts");
                 System.out.println("3. Exit");
                 System.out.print("Choose an option: ");
