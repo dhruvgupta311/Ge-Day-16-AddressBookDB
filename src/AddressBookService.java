@@ -32,7 +32,8 @@ public class AddressBookService {
                 System.out.println("1. Add Contact");
                 System.out.println("2. View Contacts");
                 System.out.println("3. Edit Contact");
-                System.out.println("4. Exit");
+                System.out.println("4. Delete Contact");
+                System.out.println("5. Exit");
                 System.out.print("Choose an option: ");
 
                 int choice = scanner.nextInt();
@@ -104,6 +105,18 @@ public class AddressBookService {
                         }
                     }
                     case 4 -> {
+                        System.out.print("Enter First Name of the Contact to Delete: ");
+                        String firstName = scanner.nextLine();
+
+                        String deleteSQL = String.format("DELETE FROM contacts WHERE first_name = '%s';", firstName);
+                        int rowsAffected = statement.executeUpdate(deleteSQL);
+                        if (rowsAffected > 0) {
+                            System.out.println("Contact deleted successfully!");
+                        } else {
+                            System.out.println("No contact found with the given name.");
+                        }
+                    }
+                    case 5 -> {
                         System.out.println("Exiting... Goodbye!");
                         return;
                     }
