@@ -29,9 +29,10 @@ public class AddressBookService {
 
             while (true) {
                 System.out.println("\nMenu:");
-                System.out.println("1. Insert Contact");
+                System.out.println("1. Add Contact");
                 System.out.println("2. View Contacts");
-                System.out.println("3. Exit");
+                System.out.println("3. Edit Contact");
+                System.out.println("4. Exit");
                 System.out.print("Choose an option: ");
 
                 int choice = scanner.nextInt();
@@ -78,6 +79,31 @@ public class AddressBookService {
                         }
                     }
                     case 3 -> {
+                        System.out.print("Enter First Name of the Contact to Edit: ");
+                        String firstName = scanner.nextLine();
+
+                        System.out.print("Enter New Address: ");
+                        String address = scanner.nextLine();
+                        System.out.print("Enter New City: ");
+                        String city = scanner.nextLine();
+                        System.out.print("Enter New State: ");
+                        String state = scanner.nextLine();
+                        System.out.print("Enter New Zip: ");
+                        String zip = scanner.nextLine();
+                        System.out.print("Enter New Phone Number: ");
+                        String phoneNumber = scanner.nextLine();
+                        System.out.print("Enter New Email: ");
+                        String email = scanner.nextLine();
+
+                        String updateSQL = String.format("UPDATE contacts SET address = '%s', city = '%s', state = '%s', zip = '%s', phone_number = '%s', email = '%s' WHERE first_name = '%s';", address, city, state, zip, phoneNumber, email, firstName);
+                        int rowsAffected = statement.executeUpdate(updateSQL);
+                        if (rowsAffected > 0) {
+                            System.out.println("Contact updated successfully!");
+                        } else {
+                            System.out.println("No contact found with the given name.");
+                        }
+                    }
+                    case 4 -> {
                         System.out.println("Exiting... Goodbye!");
                         return;
                     }
