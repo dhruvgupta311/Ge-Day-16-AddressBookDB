@@ -24,10 +24,10 @@ public class AddressBookService {
                 scanner.nextLine(); // Consume newline
 
                 switch (choice) {
-                    case 1 -> addContact(statement, scanner);
+                    case 1 -> addContact(statement, scanner); // Add contact to both Friend and Family
                     case 2 -> viewContacts(statement);
-                    case 3 -> editContact(statement, scanner);  // Fixed method call
-                    case 4 -> deleteContact(statement, scanner); // Fixed method call
+                    case 3 -> editContact(statement, scanner);
+                    case 4 -> deleteContact(statement, scanner);
                     case 5 -> retrieveContactsByLocation(statement, scanner);
                     case 6 -> getContactCountByLocation(statement, scanner);
                     case 7 -> retrieveSortedContactsByCity(statement, scanner);
@@ -91,12 +91,8 @@ public class AddressBookService {
         System.out.print("Choose an option: ");
     }
 
-    // Add a new contact
+    // Add a new contact to both Friend and Family address books
     private static void addContact(Statement statement, Scanner scanner) {
-        System.out.print("Enter Address Book ID: ");
-        int addressBookId = scanner.nextInt();
-        scanner.nextLine();  // Consume newline
-
         System.out.print("Enter First Name: ");
         String firstName = scanner.nextLine();
         System.out.print("Enter Last Name: ");
@@ -114,17 +110,72 @@ public class AddressBookService {
         System.out.print("Enter Email: ");
         String email = scanner.nextLine();
 
-        String insertSQL = String.format("""
-                INSERT INTO contacts (first_name, last_name, address, city, state, zip, phone_number, email, address_book_id)
-                VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);
-                """, firstName, lastName, address, city, state, zip, phoneNumber, email, addressBookId);
+        // Add both "Friend" and "Family" address books if they don't exist
+        int friendAddressBookId = getOrCreateAddressBook(statement, "Friend");
+        int familyAddressBookId = getOrCreateAddressBook(statement, "Family");
 
-        try {
-            statement.executeUpdate(insertSQL);
-            System.out.println("Contact added successfully!");
+        // Insert the contact into both Friend and Family address books
+        String insertContactSQL = """
+                INSERT INTO contacts (first_name, last_name, address, city, state, zip, phone_number, email, address_book_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """;
+
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(insertContactSQL)) {
+            // Add to "Friend" address book
+            ps.setString(1, firstName);
+            ps.setString(2, lastName);
+            ps.setString(3, address);
+            ps.setString(4, city);
+            ps.setString(5, state);
+            ps.setString(6, zip);
+            ps.setString(7, phoneNumber);
+            ps.setString(8, email);
+            ps.setInt(9, friendAddressBookId);
+            ps.executeUpdate();
+
+            // Add to "Family" address book
+            ps.setInt(9, familyAddressBookId);
+            ps.executeUpdate();
+
+            System.out.println("Contact added to both Friend and Family address books successfully!");
         } catch (SQLException e) {
             System.err.println("Error adding contact: " + e.getMessage());
         }
+    }
+
+    // Get or create address book and return its ID
+    private static int getOrCreateAddressBook(Statement statement, String type) {
+        String checkAddressBookSQL = "SELECT id FROM address_books WHERE name = ? AND type = ?;";
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(checkAddressBookSQL)) {
+            ps.setString(1, type);
+            ps.setString(2, type);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking address book: " + e.getMessage());
+        }
+
+        // If not found, create new address book
+        String insertAddressBookSQL = "INSERT INTO address_books (name, type) VALUES (?, ?);";
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(insertAddressBookSQL, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, type);
+            ps.setString(2, type);
+            ps.executeUpdate();
+
+            try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error creating address book: " + e.getMessage());
+        }
+
+        return -1; // Error case
     }
 
     // View all contacts
@@ -151,34 +202,49 @@ public class AddressBookService {
 
     // Edit a contact
     private static void editContact(Statement statement, Scanner scanner) {
-        System.out.print("Enter Contact ID to Edit: ");
+        System.out.print("Enter contact ID to edit: ");
         int contactId = scanner.nextInt();
-        scanner.nextLine();  // Consume newline
+        scanner.nextLine(); // Consume newline
 
-        System.out.print("Enter New Address: ");
+        System.out.print("Enter new First Name: ");
+        String firstName = scanner.nextLine();
+        System.out.print("Enter new Last Name: ");
+        String lastName = scanner.nextLine();
+        System.out.print("Enter new Address: ");
         String address = scanner.nextLine();
-        System.out.print("Enter New City: ");
+        System.out.print("Enter new City: ");
         String city = scanner.nextLine();
-        System.out.print("Enter New State: ");
+        System.out.print("Enter new State: ");
         String state = scanner.nextLine();
-        System.out.print("Enter New Zip: ");
+        System.out.print("Enter new Zip: ");
         String zip = scanner.nextLine();
-        System.out.print("Enter New Phone Number: ");
+        System.out.print("Enter new Phone Number: ");
         String phoneNumber = scanner.nextLine();
-        System.out.print("Enter New Email: ");
+        System.out.print("Enter new Email: ");
         String email = scanner.nextLine();
 
-        String updateSQL = String.format("""
-                UPDATE contacts SET address = '%s', city = '%s', state = '%s', zip = '%s', phone_number = '%s', email = '%s'
-                WHERE id = %d;
-                """, address, city, state, zip, phoneNumber, email, contactId);
+        String updateSQL = """
+                UPDATE contacts
+                SET first_name = ?, last_name = ?, address = ?, city = ?, state = ?, zip = ?, phone_number = ?, email = ?
+                WHERE id = ?;
+                """;
 
-        try {
-            int rowsAffected = statement.executeUpdate(updateSQL);
-            if (rowsAffected > 0) {
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(updateSQL)) {
+            ps.setString(1, firstName);
+            ps.setString(2, lastName);
+            ps.setString(3, address);
+            ps.setString(4, city);
+            ps.setString(5, state);
+            ps.setString(6, zip);
+            ps.setString(7, phoneNumber);
+            ps.setString(8, email);
+            ps.setInt(9, contactId);
+
+            int rowsUpdated = ps.executeUpdate();
+            if (rowsUpdated > 0) {
                 System.out.println("Contact updated successfully!");
             } else {
-                System.out.println("No contact found with the given ID.");
+                System.out.println("Contact not found!");
             }
         } catch (SQLException e) {
             System.err.println("Error updating contact: " + e.getMessage());
@@ -187,16 +253,19 @@ public class AddressBookService {
 
     // Delete a contact
     private static void deleteContact(Statement statement, Scanner scanner) {
-        System.out.print("Enter Contact ID to Delete: ");
+        System.out.print("Enter contact ID to delete: ");
         int contactId = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
 
-        String deleteSQL = String.format("DELETE FROM contacts WHERE id = %d;", contactId);
-        try {
-            int rowsAffected = statement.executeUpdate(deleteSQL);
-            if (rowsAffected > 0) {
+        String deleteSQL = "DELETE FROM contacts WHERE id = ?;";
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(deleteSQL)) {
+            ps.setInt(1, contactId);
+
+            int rowsDeleted = ps.executeUpdate();
+            if (rowsDeleted > 0) {
                 System.out.println("Contact deleted successfully!");
             } else {
-                System.out.println("No contact found with the given ID.");
+                System.out.println("Contact not found!");
             }
         } catch (SQLException e) {
             System.err.println("Error deleting contact: " + e.getMessage());
@@ -205,72 +274,81 @@ public class AddressBookService {
 
     // Retrieve contacts by City or State
     private static void retrieveContactsByLocation(Statement statement, Scanner scanner) {
-        System.out.print("Enter City or State to Retrieve Contacts: ");
+        System.out.print("Enter City or State: ");
         String location = scanner.nextLine();
 
-        String retrieveSQL = String.format("""
-                SELECT * FROM contacts WHERE city = '%s' OR state = '%s';
-                """, location, location);
-        try (ResultSet resultSet = statement.executeQuery(retrieveSQL)) {
-            System.out.println("\nContacts:");
-            while (resultSet.next()) {
-                System.out.printf("ID: %d, First Name: %s, Last Name: %s, Address: %s, City: %s, State: %s, Zip: %s, Phone: %s, Email: %s%n",
-                        resultSet.getInt("id"),
-                        resultSet.getString("first_name"),
-                        resultSet.getString("last_name"),
-                        resultSet.getString("address"),
-                        resultSet.getString("city"),
-                        resultSet.getString("state"),
-                        resultSet.getString("zip"),
-                        resultSet.getString("phone_number"),
-                        resultSet.getString("email"));
+        String selectSQL = "SELECT * FROM contacts WHERE city = ? OR state = ?;";
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(selectSQL)) {
+            ps.setString(1, location);
+            ps.setString(2, location);
+
+            try (ResultSet resultSet = ps.executeQuery()) {
+                System.out.println("\nContacts in " + location + ":");
+                while (resultSet.next()) {
+                    System.out.printf("ID: %d, First Name: %s, Last Name: %s, Address: %s, City: %s, State: %s, Zip: %s, Phone: %s, Email: %s%n",
+                            resultSet.getInt("id"),
+                            resultSet.getString("first_name"),
+                            resultSet.getString("last_name"),
+                            resultSet.getString("address"),
+                            resultSet.getString("city"),
+                            resultSet.getString("state"),
+                            resultSet.getString("zip"),
+                            resultSet.getString("phone_number"),
+                            resultSet.getString("email"));
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving contacts by location: " + e.getMessage());
+            System.err.println("Error retrieving contacts: " + e.getMessage());
         }
     }
 
     // Get contact count by City or State
     private static void getContactCountByLocation(Statement statement, Scanner scanner) {
-        System.out.print("Enter City or State to Get Contact Count: ");
+        System.out.print("Enter City or State: ");
         String location = scanner.nextLine();
 
-        String countSQL = String.format("""
-                SELECT COUNT(*) FROM contacts WHERE city = '%s' OR state = '%s';
-                """, location, location);
-        try (ResultSet resultSet = statement.executeQuery(countSQL)) {
-            if (resultSet.next()) {
-                int count = resultSet.getInt(1);
-                System.out.println("Number of contacts in " + location + ": " + count);
+        String selectSQL = "SELECT COUNT(*) FROM contacts WHERE city = ? OR state = ?;";
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(selectSQL)) {
+            ps.setString(1, location);
+            ps.setString(2, location);
+
+            try (ResultSet resultSet = ps.executeQuery()) {
+                if (resultSet.next()) {
+                    int count = resultSet.getInt(1);
+                    System.out.println("Number of contacts in " + location + ": " + count);
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Error getting contact count: " + e.getMessage());
+            System.err.println("Error counting contacts: " + e.getMessage());
         }
     }
 
     // Retrieve contacts sorted alphabetically by name in a given city
     private static void retrieveSortedContactsByCity(Statement statement, Scanner scanner) {
-        System.out.print("Enter City to Retrieve Sorted Contacts: ");
+        System.out.print("Enter City: ");
         String city = scanner.nextLine();
 
-        String retrieveSQL = String.format("""
-                SELECT * FROM contacts WHERE city = '%s' ORDER BY first_name, last_name;
-                """, city);
-        try (ResultSet resultSet = statement.executeQuery(retrieveSQL)) {
-            System.out.println("\nContacts in " + city + " sorted alphabetically:");
-            while (resultSet.next()) {
-                System.out.printf("ID: %d, First Name: %s, Last Name: %s, Address: %s, State: %s, Zip: %s, Phone: %s, Email: %s%n",
-                        resultSet.getInt("id"),
-                        resultSet.getString("first_name"),
-                        resultSet.getString("last_name"),
-                        resultSet.getString("address"),
-                        resultSet.getString("state"),
-                        resultSet.getString("zip"),
-                        resultSet.getString("phone_number"),
-                        resultSet.getString("email"));
+        String selectSQL = "SELECT * FROM contacts WHERE city = ? ORDER BY first_name, last_name;";
+        try (PreparedStatement ps = statement.getConnection().prepareStatement(selectSQL)) {
+            ps.setString(1, city);
+
+            try (ResultSet resultSet = ps.executeQuery()) {
+                System.out.println("\nContacts in " + city + " sorted alphabetically:");
+                while (resultSet.next()) {
+                    System.out.printf("ID: %d, First Name: %s, Last Name: %s, Address: %s, City: %s, State: %s, Zip: %s, Phone: %s, Email: %s%n",
+                            resultSet.getInt("id"),
+                            resultSet.getString("first_name"),
+                            resultSet.getString("last_name"),
+                            resultSet.getString("address"),
+                            resultSet.getString("city"),
+                            resultSet.getString("state"),
+                            resultSet.getString("zip"),
+                            resultSet.getString("phone_number"),
+                            resultSet.getString("email"));
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving sorted contacts: " + e.getMessage());
+            System.err.println("Error retrieving contacts: " + e.getMessage());
         }
     }
 }
